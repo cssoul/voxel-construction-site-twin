@@ -1,0 +1,82 @@
+html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #0b0d12; }
+* { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+canvas { display: block; }
+
+:root {
+  --tw-green: #8dffbe;
+  --tw-green-dim: #4f9e78;
+  --tw-green-bright: #5affa0;
+  --tw-border: rgba(110, 255, 180, 0.28);
+  --tw-bg: rgba(6, 14, 11, 0.62);
+  --tw-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+}
+
+.tw-panel {
+  position: fixed;
+  z-index: 10;
+  font-family: var(--tw-mono);
+  color: var(--tw-green);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  line-height: 1.55;
+  background: var(--tw-bg);
+  border: 1px solid var(--tw-border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  box-shadow: 0 0 18px rgba(0, 255, 150, 0.08), inset 0 0 22px rgba(0, 255, 150, 0.04);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  text-shadow: 0 0 7px rgba(60, 255, 160, 0.4);
+  pointer-events: auto;
+}
+.tw-panel h3 {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #c8ffe2;
+  letter-spacing: 0.18em;
+  border-bottom: 1px solid var(--tw-border);
+  padding-bottom: 6px;
+}
+.tw-btn {
+  font-family: var(--tw-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: #a9ffd2;
+  background: rgba(20, 46, 34, 0.55);
+  border: 1px solid rgba(110, 255, 180, 0.3);
+  border-radius: 2px;
+  padding: 3px 8px;
+  cursor: pointer;
+  text-shadow: 0 0 6px rgba(60, 255, 160, 0.35);
+}
+.tw-btn:hover { background: rgba(40, 90, 66, 0.6); }
+.tw-btn.active {
+  background: rgba(90, 255, 160, 0.18);
+  border-color: var(--tw-green-bright);
+  color: #eafff4;
+  box-shadow: 0 0 8px rgba(90, 255, 160, 0.35);
+}
+.tw-scroll { overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(110,255,180,.35) transparent; }
+.tw-scroll::-webkit-scrollbar { width: 5px; }
+.tw-scroll::-webkit-scrollbar-thumb { background: rgba(110, 255, 180, 0.35); border-radius: 12px; }
+
+input[type='range'].tw-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 3px;
+  background: rgba(110, 255, 180, 0.25);
+  border-radius: 2px;
+  outline: none;
+}
+input[type='range'].tw-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--tw-green-bright);
+  box-shadow: 0 0 8px rgba(90, 255, 160, 0.6);
+  cursor: pointer;
+}
