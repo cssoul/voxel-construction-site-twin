@@ -45,6 +45,35 @@ function std(c: number, r = 0.85, m = 0, e = 0, ec = 0xffffff): THREE.MeshStanda
   return new THREE.MeshStandardMaterial({ color: c, roughness: r, metalness: m, emissive: ec, emissiveIntensity: e });
 }
 
+/** 覆雪材质条目（WeatherSim 按 cover 强度混白） */
+export interface SnowEntry {
+  mat: THREE.MeshStandardMaterial;
+  base: THREE.Color;
+  /** 混白比例上限 0~1（地面料堆高、机械涂装低以保留识别色） */
+  amount: number;
+}
+
+const SNOW_WHITE = 0xf7fbff;
+
+/** 收集户外材质用于覆雪（带纹理的地面由 WeatherSim 单独提亮处理） */
+export function snowCoverEntries(M: Materials): SnowEntry[] {
+  const e = (mat: THREE.MeshStandardMaterial, amount: number): SnowEntry => ({ mat, base: mat.color.clone(), amount });
+  return [
+    // 地面 / 料堆 / 基坑：覆雪最明显
+    e(M.dirtA, 0.85), e(M.dirtB, 0.85), e(M.dirtC, 0.85), e(M.dirtFresh, 0.85),
+    e(M.soil, 0.85), e(M.sand, 0.78), e(M.gravel, 0.78),
+    e(M.concrete, 0.7), e(M.concDark, 0.78), e(M.cement, 0.6),
+    e(M.brick, 0.7), e(M.bag, 0.65), e(M.plank, 0.65),
+    // 机械 / 结构：轻度挂雪，保留涂装识别色
+    e(M.yellow, 0.5), e(M.orange, 0.5), e(M.red, 0.5),
+    e(M.blue, 0.5), e(M.blueD, 0.5), e(M.navy, 0.55),
+    e(M.steel, 0.5), e(M.steelDark, 0.55), e(M.rust, 0.6),
+    e(M.white, 0.4), e(M.black, 0.55),
+  ];
+}
+
+export { SNOW_WHITE as snowWhiteColor };
+
 export function createMaterials(): Materials {
   const M: Materials = {
     wood: new THREE.MeshStandardMaterial({ map: woodTexture(), roughness: 0.68, metalness: 0.05 }),

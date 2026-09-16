@@ -32,6 +32,7 @@ const _colA = new THREE.Color();
 const _colB = new THREE.Color();
 const _sky = new THREE.Color();
 const _gray = new THREE.Color(0x3a4048);
+const _snowSky = new THREE.Color(0xd8e6f0);
 
 /** 昼夜系统：太阳/天空/环境光/夜间灯效（数据来自 store.timeOfDay / store.autoTime） */
 export class DayNight {
@@ -65,35 +66,39 @@ export class DayNight {
     const b = SKY_KEYS[i + 1];
     const k = clamp01((t - a.t) / Math.max(0.001, b.t - a.t));
     const rain = this.weather.rain;
+    const snow = this.weather.snow;
+
+    const ang = ((t - 6) / 12) * Math.PI;
+    const elevN = Math.sin(ang);
+    const nightF = this.nightF = clamp01((0.14 - elevN) / 0.32);
 
     _sky.setHex(a.sky).lerp(_colB.setHex(b.sky), k);
     const sunI = lerp(a.sunI, b.sunI, k);
     const hemiI = lerp(a.hemi, b.hemi, k);
     const ambI = lerp(a.amb, b.amb, k);
     _sky.lerp(_gray, rain * 0.68);
+    // 雪天天空偏灰白；夜间压低混色权重避免夜空发白
+    _sky.lerp(_snowSky, snow * 0.72 * (1 - nightF * 0.7));
     (this.scene.background as THREE.Color).copy(_sky);
     (this.scene.fog as THREE.FogExp2).color.copy(_sky);
-    (this.scene.fog as THREE.FogExp2).density = 0.0046 + 0.004 * rain;
+    (this.scene.fog as THREE.FogExp2).density = 0.0046 + 0.004 * rain + 0.0032 * snow;
 
-    const ang = ((t - 6) / 12) * Math.PI;
-    const elevN = Math.sin(ang);
     this.lights.sun.position.set(-Math.cos(ang) * 34, Math.max(5, elevN * 30 + 2), 16);
     this.lights.sun.color.setHex(a.sun).lerp(_colA.setHex(b.sun), k);
-    this.lights.sun.intensity = sunI * (1 - 0.72 * rain);
-    this.lights.hemi.intensity = hemiI * (1 - 0.4 * rain) + 0.04;
-    this.lights.amb.intensity = ambI * (1 - 0.3 * rain);
+    this.lights.sun.intensity = sunI * (1 - 0.72 * rain) * (1 - 0.38 * snow);
+    this.lights.hemi.intensity = hemiI * (1 - 0.4 * rain) * (1 + 0.35 * snow) + 0.04;
+    this.lights.amb.intensity = ambI * (1 - 0.3 * rain) * (1 + 0.15 * snow);
 
-    const nightF = this.nightF = clamp01((0.14 - elevN) / 0.32);
     const M = this.M;
     M.glass.emissiveIntensity = nightF * 1.5 + rain * 0.12;
     M.cabGlass.emissiveIntensity = nightF * 0.9;
     M.headLight.emissiveIntensity = nightF * 1.7;
     M.lampOn.emissiveIntensity = 0.06 + nightF * 1.9;
-    this.weather.lampGlow.opacity = clamp01(nightF * 1.15 - 0.06) * (0.8 + 0.4 * rain);
+    this.weather.lampGlow.opacity = clamp01(nightF * 1.15 - 0.06) * (0.8 + 0.4 * rain + 0.15 * snow);
     this.weather.poolGlow.opacity = this.weather.lampGlow.opacity * 0.7;
     M.beacon.emissiveIntensity = 0.15 + nightF * (1.0 + 1.0 * Math.sin(elapsed * 4.6));
-    this.lights.spotPit.intensity = nightF * (85 + 55 * rain);
-    this.lights.spotBld.intensity = nightF * (65 + 45 * rain);
+    this.lights.spotPit.intensity = nightF * (85 + 55 * rain + 30 * snow);
+    this.lights.spotBld.intensity = nightF * (65 + 45 * rain + 25 * snow);
 
     const hh = Math.floor(t);
     const mm = Math.floor((t % 1) * 60);

@@ -1,18 +1,29 @@
+import * as THREE from 'three';
 import type { WetMatEntry } from './types';
 import type { TwinStore } from '../composables/useTwinStore';
 import { dustAmt } from '../composables/useTwinStore';
 import type { DustSystem } from './fx/Dust';
-import type { RainSystem } from './fx/Rain';
+import type { PrecipSystem } from './fx/Precip';
+import type { SnowEntry } from './materials';
+import { snowWhiteColor } from './materials';
+import { lerp } from './random';
 
-/** 天气系统：暴雨渐入渐出 / 地面湿润 / 尘土 & 雨粒子参数 */
+const SNOW_WHITE = new THREE.Color(snowWhiteColor);
+
+/** 天气系统：暴雨/降雪渐入渐出 / 地面湿润 / 覆雪 / 尘土 & 降水粒子参数 */
 export class WeatherSim {
   rain = 0;
+  snow = 0;
+  /** 地面积雪覆盖 0~1（慢积慢融，切回晴天不会瞬间消失） */
+  cover = 0;
   wet = 0;
   lampGlow: THREE.SpriteMaterial;
   poolGlow: THREE.MeshBasicMaterial;
   private wetMats: WetMatEntry[];
+  private snowMats: SnowEntry[];
+  private ground: WetMatEntry | null;
   private dust: DustSystem | null;
-  private rainFx: RainSystem | null;
+  private precip: PrecipSystem | null;
   private store: TwinStore;
 
   constructor(
@@ -21,37 +32,55 @@ export class WeatherSim {
     lampGlow: THREE.SpriteMaterial,
     poolGlow: THREE.MeshBasicMaterial,
     dust: DustSystem | null,
-    rainFx: RainSystem | null,
+    precip: PrecipSystem | null,
+    snowMats: SnowEntry[] = [],
   ) {
     this.store = store;
     this.wetMats = wetMats;
+    this.ground = wetMats[0] ?? null;
+    this.snowMats = snowMats;
     this.lampGlow = lampGlow;
     this.poolGlow = poolGlow;
     this.dust = dust;
-    this.rainFx = rainFx;
+    this.precip = precip;
   }
 
-  update(dt: number): void {
-    const target = this.store.weather === 'rain' ? 1 : 0;
-    this.rain += (target - this.rain) * Math.min(1, dt * 0.8);
-    this.wet += (target - this.wet) * Math.min(1, dt * 0.16);
+  update(dt: number, elapsed: number): void {
+    const w = this.store.weather;
+    const rainT = w === 'rain' ? 1 : 0;
+    const snowT = w === 'snow' ? 1 : 0;
+    this.rain += (rainT - this.rain) * Math.min(1, dt * 0.8);
+    this.snow += (snowT - this.snow) * Math.min(1, dt * 0.7);
+    // 积雪：堆积较快、融化稍慢
+    const coverRate = snowT > this.cover ? 0.35 : 0.22;
+    this.cover += (snowT - this.cover) * Math.min(1, dt * coverRate);
+    const wetT = rainT;
+    this.wet += (wetT - this.wet) * Math.min(1, dt * 0.16);
 
-    this.wetMats.forEach((w) => {
-      w.mat.roughness = lerp(w.baseRough, 0.34, this.wet);
-      w.mat.color.copy(w.baseColor).multiplyScalar(1 - 0.24 * this.wet);
+    // 地面湿润：变暗 + 粗糙度下降
+    this.wetMats.forEach((wm) => {
+      wm.mat.roughness = lerp(wm.baseRough, 0.34, this.wet);
+      wm.mat.color.copy(wm.baseColor).multiplyScalar(1 - 0.24 * this.wet);
     });
-    if (this.dust) {
-      this.dust.mat.uniforms.uTime.value = this.store.elapsed;
-      this.dust.mat.uniforms.uIntensity.value = dustAmt(this.store) * (1 - this.rain * 0.9);
+
+    // 覆雪：普通户外材质向雪白混色；带纹理的地面以提亮 + 自发光模拟积雪反光
+    this.snowMats.forEach((s) => {
+      s.mat.color.copy(s.base).lerp(SNOW_WHITE, this.cover * s.amount);
+    });
+    if (this.ground) {
+      const g = this.ground.mat;
+      g.color.copy(this.ground.baseColor).multiplyScalar((1 - 0.24 * this.wet) * (1 + 0.85 * this.cover));
+      const f = this.cover * 0.42;
+      g.emissive.setRGB(f, f, Math.min(1, f * 1.15));
     }
-    if (this.rainFx) {
-      this.rainFx.mat.uniforms.uTime.value = this.store.elapsed;
-      this.rainFx.mat.uniforms.uRain.value = this.rain;
-      this.rainFx.pts.visible = this.rain > 0.015;
+
+    if (this.dust) {
+      this.dust.mat.uniforms.uTime.value = elapsed;
+      this.dust.mat.uniforms.uIntensity.value = dustAmt(this.store) * (1 - this.rain * 0.9) * (1 - this.snow * 0.95);
+    }
+    if (this.precip) {
+      this.precip.update(elapsed);
+      this.precip.setIntensity(this.rain, this.snow);
     }
   }
 }
-
-// 仅用于类型位置的 THREE 引用（保持模块自洽）
-import * as THREE from 'three';
-import { lerp } from './random';

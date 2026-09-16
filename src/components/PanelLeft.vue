@@ -3,6 +3,7 @@ import { computed, onUnmounted, ref } from 'vue';
 import { useTwinStore } from '../composables/useTwinStore';
 import { useWeather } from '../composables/useWeather';
 import { useDayNight } from '../composables/useDayNight';
+import { WEATHER_TEXT } from '../data/types';
 import { twinsBridge } from '../scene/twin/twinsBridge';
 import ToggleSwitch from './ToggleSwitch.vue';
 import type { TwinEntityState } from '../data/types';
@@ -129,11 +130,12 @@ function triggerRain(): void {
 
     <!-- 天气 -->
     <div class="sec-head">
-      <span>天气控制</span><i>{{ store.weather === 'rain' ? 'RAIN' : 'CLEAR' }}</i>
+      <span>天气控制</span><i>{{ WEATHER_TEXT[store.weather].en }}</i>
     </div>
     <div class="view-grid">
       <button class="chip" :class="{ active: weather.weather.value === 'clear' }" @click="weather.setWeather('clear')">晴 CLEAR</button>
       <button class="chip" :class="{ active: weather.isRain.value }" @click="weather.setWeather('rain')">暴雨 RAIN</button>
+      <button class="chip" :class="{ active: weather.isSnow.value }" @click="weather.setWeather('snow')">降雪 SNOW</button>
     </div>
 
     <!-- 实体索引 -->

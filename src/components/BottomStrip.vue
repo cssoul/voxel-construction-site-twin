@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref } from 'vue';
 import { useTwinStore, speedMult } from '../composables/useTwinStore';
+import { WEATHER_TEXT } from '../data/types';
 import { twinsBridge } from '../scene/twin/twinsBridge';
 
 const store = useTwinStore();
@@ -28,6 +29,7 @@ onUnmounted(() => window.clearInterval(timer));
 
 const mode = computed(() => {
   if (store.weather === 'rain') return '雨天作业';
+  if (store.weather === 'snow') return '雪天作业';
   const t = store.timeOfDay;
   if (t >= 19 || t < 6) return '夜间施工';
   return '施工进行中';
@@ -36,7 +38,7 @@ const mode = computed(() => {
 const cols = computed(() => [
   { k: '运行模式', v: mode.value, accent: true },
   { k: '昼夜时钟', v: store.clockText },
-  { k: '天气', v: store.weather === 'rain' ? '暴雨' : '晴' },
+  { k: '天气', v: WEATHER_TEXT[store.weather].cn },
   { k: '仿真速度', v: `${speedMult(store).toFixed(1)}×` },
   { k: '作业机械', v: `${working.value} / ${MACHINE_IDS.length} 台` },
   { k: '流动巡查', v: `${walking.value} 人` },

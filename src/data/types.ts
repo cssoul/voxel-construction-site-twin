@@ -30,7 +30,14 @@ export interface TwinEntityState {
   details: Array<{ k: string; v: string }>;
 }
 
-export type WeatherKind = 'clear' | 'rain';
+export type WeatherKind = 'clear' | 'rain' | 'snow';
+
+/** 天气显示文案（UI 各处共用） */
+export const WEATHER_TEXT: Record<WeatherKind, { cn: string; en: string }> = {
+  clear: { cn: '晴', en: 'CLEAR' },
+  rain: { cn: '暴雨', en: 'RAIN' },
+  snow: { cn: '降雪', en: 'SNOW' },
+};
 
 /** 相机视角预设 */
 export interface ViewPreset {

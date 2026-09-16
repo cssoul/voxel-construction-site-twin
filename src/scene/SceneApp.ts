@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { InstPool, G } from './voxel';
-import { createMaterials, type Materials } from './materials';
+import { createMaterials, snowCoverEntries, type Materials } from './materials';
 import { createStudio, type StudioLights } from './Studio';
 import { resetSeed } from './random';
 import { createSystems, type SceneCtx } from './types';
@@ -14,7 +14,8 @@ import { buildExcavator, updateDigs, digProgress } from './machines/Excavator';
 import { buildTruck, buildMixer, buildLoader, updateVehicles, truckTotalLength, vehicleProgress } from './machines/GroundVehicle';
 import { buildWorkers, WorkerSystem } from './actors/Workers';
 import { makeDust, type DustSystem } from './fx/Dust';
-import { makeRain, type RainSystem } from './fx/Rain';
+import { PrecipSystem } from './fx/Precip';
+import { LightningSim } from './fx/Lightning';
 import { makeBurst } from './fx/Burst';
 import { DayNight } from './DayNight';
 import { WeatherSim } from './Weather';
@@ -69,6 +70,9 @@ function buildStaticPools(ctx: SceneCtx): void {
   for (const [name, pool] of entries) pool.build(`pool-${name}`, scene);
 }
 
+/** 闪电时的画面增亮色（冷白偏蓝） */
+const FLASH_COLOR = new THREE.Color(0xcfdcff);
+
 /** 场景总装：渲染器/相机/灯光/全部装配/动画循环 */
 export class SceneApp {
   private renderer: THREE.WebGLRenderer;
@@ -79,7 +83,8 @@ export class SceneApp {
   private lights: StudioLights;
   private workers: WorkerSystem;
   private dust: DustSystem;
-  private rain: RainSystem;
+  private precip: PrecipSystem;
+  private lightning: LightningSim;
   private burst: ReturnType<typeof makeBurst>;
   private dayNight: DayNight;
   private weather: WeatherSim;
@@ -145,8 +150,9 @@ export class SceneApp {
     twins.burst = this.burst;
     this.workers = buildWorkers(ctx);
     this.dust = makeDust(this.scene);
-    this.rain = makeRain(this.scene);
-    this.weather = new WeatherSim(store, ctx.sys.wetMats, ctx.sys.lampGlowMat!, ctx.sys.poolGlowMat!, this.dust, this.rain);
+    this.precip = new PrecipSystem(this.scene);
+    this.lightning = new LightningSim(this.scene);
+    this.weather = new WeatherSim(store, ctx.sys.wetMats, ctx.sys.lampGlowMat!, ctx.sys.poolGlowMat!, this.dust, this.precip, snowCoverEntries(M));
     this.dayNight = new DayNight(this.scene, this.lights, M, store, this.weather);
 
     this.cameraCtrl = new CameraController(this.camera);
@@ -189,6 +195,10 @@ export class SceneApp {
     };
 
     window.addEventListener('resize', this.onResize);
+    // 开发模式调试钩子（生产构建自动剔除）
+    if (import.meta.env.DEV) {
+      (window as unknown as Record<string, unknown>).__twinDebug = { weather: this.weather, lightning: this.lightning };
+    }
     this.animate();
   }
 
@@ -388,8 +398,19 @@ export class SceneApp {
       this.ctx.sys.barrierArm.rotation.z += (tgt - this.ctx.sys.barrierArm.rotation.z) * Math.min(1, dt * 3);
     }
 
-    this.weather.update(dt);
+    this.weather.update(dt, store.elapsed);
     const clockText = this.dayNight.update(dt, store.elapsed);
+    // 闪电增亮需在昼夜系统覆写背景/雾色之后叠加
+    this.lightning.update(dt, this.weather.rain);
+    if (this.lightning.flash > 0.003) {
+      const f = this.lightning.flash;
+      const bg = this.scene.background as THREE.Color;
+      const fog = this.scene.fog as THREE.FogExp2;
+      bg.lerp(FLASH_COLOR, f * 0.6);
+      fog.color.lerp(FLASH_COLOR, f * 0.6);
+      this.lights.hemi.intensity += f * 1.1;
+      this.lights.amb.intensity += f * 0.55;
+    }
     this.clockAcc += dt;
     if (this.clockAcc >= 0.25) {
       this.clockAcc = 0;
@@ -415,6 +436,7 @@ export class SceneApp {
     cancelAnimationFrame(this.raf);
     window.removeEventListener('resize', this.onResize);
     this.interaction.dispose();
+    this.lightning.dispose();
     twinsBridge.twins = null;
     this.scene.traverse((o) => {
       const mesh = o as THREE.Mesh;

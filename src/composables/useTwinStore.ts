@@ -74,7 +74,7 @@ export function selectEntity(id: string | null): void {
 }
 
 export function toggleWeather(): void {
-  store.weather = store.weather === 'rain' ? 'clear' : 'rain';
+  store.weather = store.weather === 'clear' ? 'rain' : store.weather === 'rain' ? 'snow' : 'clear';
 }
 
 export function setWeather(w: WeatherKind): void {

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useTwinStore } from '../composables/useTwinStore';
+import { WEATHER_TEXT } from '../data/types';
 
 const store = useTwinStore();
 
@@ -15,7 +16,7 @@ const clockSec = computed(() => {
 
 const pills = computed(() => [
   { k: 'clock', v: clockSec.value },
-  { k: 'weather', v: store.weather === 'rain' ? '暴雨 RAIN' : '晴 CLEAR' },
+  { k: 'weather', v: `${WEATHER_TEXT[store.weather].cn} ${WEATHER_TEXT[store.weather].en}` },
   { k: 'dust', v: `尘土 ${['LOW', 'MED', 'HIGH'][store.dustIdx]}` },
   { k: 'speed', v: `${store.config.presets.speed[store.speedIdx].toFixed(1)}×` },
   { k: 'sel', v: store.selectionId ? (store.entityDefs.find((e) => e.id === store.selectionId)?.name ?? '实体') : '未选中' },
@@ -43,6 +44,8 @@ const pills = computed(() => [
 .pill {
   font-size: 10px;
   color: #a9ffd2;
+  background: rgba(20, 46, 34, 0.5);
+  border: 1px solid rgba(110, 255, 180, 0.2);
   border-radius: 999px;
   padding: 4px 12px;
   letter-spacing: 0.1em;
